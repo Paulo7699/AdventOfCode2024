@@ -10,9 +10,154 @@ public abstract class Program
 {
     public static void Main()
     {
-        Day8_P2();
+        Day9_P2();
+    }
+    
+    private static void Day9_P2()
+    {
+        string readLine = ReadFile.ReadFileInput("inputs/day9.txt");
+        List<ChainLink> diskMap = BuildDiskMap(readLine);
+        string diskMapRearrangedString = RearrangeDiskMapP2(diskMap);
+        Console.WriteLine($"Diskmap rearranged {diskMapRearrangedString}!");
+        long calculatedResult = CalculateResult(diskMapRearrangedString);
+        
+        Console.WriteLine($"9_P1 => {calculatedResult}");
+    }
+    
+    private static string RearrangeDiskMapP2(List<ChainLink> diskMapChainLinks)
+    {
+        long index = 0;
+        int? max = null;
+        List<string> diskMap = string.Join("", diskMapChainLinks).Split("/").ToList();
+        while (true)
+        {
+            Console.WriteLine($"Index : {index}");
+            
+            int positionOfFirstPoint = diskMap.IndexOf(".");
+            if (max != null) diskMap = diskMap.GetRange(0, max.Value);
+            string lastNumberChar = diskMap.Last(s => s != "." && !string.IsNullOrWhiteSpace(s));
+            int positionOfLastNumber = diskMap.LastIndexOf(lastNumberChar);
+
+            if (positionOfFirstPoint > positionOfLastNumber) return string.Join("/",diskMap);
+
+            int numberOfPointsAfter = GetNumberOfPointsAfter(diskMap, positionOfFirstPoint);
+            if (numberOfPointsAfter >= int.Parse(lastNumberChar))
+            {
+                diskMap[positionOfFirstPoint] = lastNumberChar;
+                diskMap[positionOfLastNumber] = ".";
+            }
+            else
+            {
+                max = positionOfLastNumber;
+            }
+
+            index++;
+        }
     }
 
+    private static int GetNumberOfPointsAfter(List<string> diskMap, int positionOfFirstPoint)
+    {
+        int res = 0;
+        string currentChar;
+        do
+        {
+            currentChar = diskMap[positionOfFirstPoint];
+            if (currentChar == ".") res++;
+            positionOfFirstPoint++;
+        } while (currentChar == ".");
+        
+        return res;
+    }
+
+    private static void Day9_P1()
+    {
+        string readLine = ReadFile.ReadFileInput("inputs/day9.txt");
+        List<ChainLink> diskMap = BuildDiskMap(readLine);
+        string diskMapRearrangedString = RearrangeDiskMap(diskMap);
+        Console.WriteLine($"Diskmap rearranged !");
+        long calculatedResult = CalculateResult(diskMapRearrangedString);
+        
+        Console.WriteLine($"9_P1 => {calculatedResult}");
+    }
+
+    private static long CalculateResult(string diskMapRearranged)
+    {
+        if (diskMapRearranged.Length == 0) return 0;
+        int index = 0;
+        long result = 0;
+
+        string[] splittedDiskMapRearranged = diskMapRearranged.Split("/");
+        foreach (var s in splittedDiskMapRearranged)
+        {
+            if (string.IsNullOrWhiteSpace(s) || s == ".") continue;
+            int parsedChar = int.Parse(s);
+            result += index * parsedChar;
+            index++;
+        }
+
+        return result;
+    }
+
+    private static string RearrangeDiskMap(List<ChainLink> diskMapChainLinks)
+    {
+        long index = 0;
+        List<string> diskMap = string.Join("", diskMapChainLinks).Split("/").ToList();
+        while (true)
+        {
+            Console.WriteLine($"Index : {index}");
+            
+            int positionOfFirstPoint = diskMap.IndexOf(".");
+            string lastNumberChar = diskMap.Last(s => s != "." && !string.IsNullOrWhiteSpace(s));
+            int positionOfLastNumber = diskMap.LastIndexOf(lastNumberChar);
+
+            if (positionOfFirstPoint > positionOfLastNumber) return string.Join("/",diskMap);
+
+            diskMap[positionOfFirstPoint] = lastNumberChar;
+            diskMap[positionOfLastNumber] = ".";
+
+            index++;
+        }
+    }
+    
+    // private static string RearrangeDiskMap(string diskMap)
+    // {
+    //     int positionOfFirstPoint = diskMap.IndexOf(".", StringComparison.InvariantCulture);
+    //     char lastNumberChar = diskMap.LastOrDefault(s => s.ToString() != ".");
+    //     int positionOfLastNumber = diskMap.LastIndexOf(lastNumberChar);
+    //
+    //     if (positionOfFirstPoint > positionOfLastNumber) return diskMap;
+    //
+    //     var diskMapArray = diskMap.ToCharArray();
+    //     diskMapArray[positionOfFirstPoint] = lastNumberChar;
+    //     diskMapArray[positionOfLastNumber] = '.';
+    //
+    //     return RearrangeDiskMap(new string(diskMapArray));
+    // }
+
+    private static List<ChainLink> BuildDiskMap(string readLine)
+    {
+        List<ChainLink> diskMap = [];
+        int id = 0;
+        bool isFreeSpace = false;
+
+        foreach (var charReadLine in readLine)
+        {
+            int parsedChar = int.Parse(charReadLine.ToString());
+            ChainLink chainLink = new()
+            {
+                Pattern = isFreeSpace ? "." : id.ToString(),
+                Occurrency = parsedChar
+            };
+            diskMap.Add(chainLink);
+
+            if (isFreeSpace) id++;
+            isFreeSpace = !isFreeSpace;
+        }
+        
+        return diskMap;
+    }
+
+    // Pas fini
     private static void Day8_P2()
     {
         ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day8.txt", false);
