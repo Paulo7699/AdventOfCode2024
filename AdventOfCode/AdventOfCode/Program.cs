@@ -10,73 +10,343 @@ public abstract class Program
 {
     public static void Main()
     {
-        Day9_P2();
+        Day10_P2();
     }
-    
+
+    private static void Day10_P2()
+    {
+        ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day10.txt", false);
+        List<Cells> trailHeads = RetrieveExpectedValuePositions(arrayValue);
+
+        Console.WriteLine($"Trailheads on : {String.Join(", and ", trailHeads.Select(c => $"({c.Row},{c.Column})"))}");
+        int total = 0;
+        foreach (var trailHead in trailHeads)
+        {
+            List<List<Cells>> paths = new();
+            List<Cells> score = CalculateScore(trailHead, arrayValue, paths);
+            total += CountUniquePathes(paths);
+        }
+
+        Console.WriteLine($"Total score : {total}");
+    }
+
+    private static int CountUniquePathes(List<List<Cells>> paths)
+    {
+        HashSet<string> uniquePaths = new();
+        foreach (var currentPath in paths)
+        {
+            string pathToString = string.Join(" -> ", currentPath.Select(c => $"({c.Row},{c.Column})"));
+            uniquePaths.Add(pathToString);
+        }
+        
+        return uniquePaths.Count;
+    }
+
+    private static void Day10_P1()
+    {
+        ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day10.txt", false);
+        List<Cells> trailHeads = RetrieveExpectedValuePositions(arrayValue);
+
+        Console.WriteLine($"Trailheads on : {String.Join(", and ", trailHeads.Select(c => $"({c.Row},{c.Column})"))}");
+        int total = 0;
+        foreach (var trailHead in trailHeads)
+        {
+            List<Cells> score = CalculateScore(trailHead, arrayValue, new());
+            List<Cells> scoreWithoutDoublons = RemoveDoublons(score);
+            Console.WriteLine(
+                $"\tScore of ({trailHead.Row},{trailHead.Column}) => {scoreWithoutDoublons.Count} ({string.Join("", scoreWithoutDoublons)})");
+            total += scoreWithoutDoublons.Count;
+        }
+
+        Console.WriteLine($"Total score : {total}");
+    }
+
+    private static List<Cells> RemoveDoublons(List<Cells> score)
+    {
+        List<Cells> newCells = new();
+        foreach (var s in score)
+        {
+            if (newCells.Any(e => e.Column == s.Column && e.Row == s.Row)) continue;
+            newCells.Add(new Cells()
+            {
+                Column = s.Column,
+                Row = s.Row,
+                Value = s.Value
+            });
+        }
+
+        return newCells;
+    }
+
+    private static List<Cells> CalculateScore(Cells trailHead, ArrayValue arrayValue, List<List<Cells>> paths)
+    {
+        List<Cells> encounteredNines = new();
+        List<Cells> path = new List<Cells> { trailHead }; // Commencer le chemin depuis le point de départ
+
+        var (rightValue, leftValue, topValue, bottomValue) = GetNeighboorValues(trailHead, arrayValue);
+
+        HandleNextPositionWithPath(trailHead, arrayValue, rightValue, encounteredNines, path, paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, leftValue, encounteredNines, path, paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, topValue, encounteredNines, path, paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, bottomValue, encounteredNines, path, paths);
+
+        return encounteredNines;
+    }
+
+    private static void HandleNextPositionWithPath(Cells trailHead, ArrayValue arrayValue, Cells? nextTrailHead,
+        List<Cells> encounteredNines, List<Cells> currentPath, List<List<Cells>> paths)
+    {
+        if (trailHead.Value == "9")
+        {
+            AddNewTrail(encounteredNines, trailHead);
+
+            // Afficher le chemin vers ce 9
+            paths.Add(currentPath);
+        }
+
+        if (nextTrailHead != null && nextTrailHead.Value != null)
+        {
+            try
+            {
+                if (trailHead.Value != null && int.Parse(nextTrailHead.Value) == int.Parse(trailHead.Value) + 1)
+                {
+                    // Créer une nouvelle liste de chemin pour cette branche
+                    var newPath = new List<Cells>(currentPath) { nextTrailHead };
+
+                    // Utiliser newPath au lieu de currentPath pour le prochain appel récursif
+                    var subPaths = CalculateScoreWithPath(nextTrailHead, arrayValue, newPath,paths);
+                    encounteredNines.AddRange(subPaths);
+                }
+            }
+            catch (Exception e)
+            {
+                // Not a number
+            }
+        }
+    }
+
+    private static List<Cells> CalculateScoreWithPath(Cells trailHead, ArrayValue arrayValue, List<Cells> currentPath, List<List<Cells>> paths)
+    {
+        List<Cells> encounteredNines = new();
+
+        var (rightValue, leftValue, topValue, bottomValue) = GetNeighboorValues(trailHead, arrayValue);
+
+        HandleNextPositionWithPath(trailHead, arrayValue, rightValue, encounteredNines, currentPath,paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, leftValue, encounteredNines, currentPath,paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, topValue, encounteredNines, currentPath,paths);
+        HandleNextPositionWithPath(trailHead, arrayValue, bottomValue, encounteredNines, currentPath,paths);
+
+        return encounteredNines;
+    }
+
+    private static (Cells? rightValue, Cells? leftValue, Cells? topValue, Cells? bottomValue) GetNeighboorValues(
+        Cells trailHead, ArrayValue arrayValue)
+    {
+        Cells? rightValue = GetNextCell(trailHead.Row, trailHead.Column + 1, arrayValue);
+        Cells? leftValue = GetNextCell(trailHead.Row, trailHead.Column - 1, arrayValue);
+        Cells? topValue = GetNextCell(trailHead.Row - 1, trailHead.Column, arrayValue);
+        Cells? bottomValue = GetNextCell(trailHead.Row + 1, trailHead.Column, arrayValue);
+
+        return (rightValue, leftValue, topValue, bottomValue);
+    }
+
+    private static Cells? GetNextCell(int newRow, int newColumn, ArrayValue arrayValue)
+    {
+        try
+        {
+            string? newValue = arrayValue.Columns[newColumn].ValuesString[newRow];
+            if (newValue != null)
+            {
+                return new Cells()
+                {
+                    Column = newColumn,
+                    Row = newRow,
+                    Value = newValue
+                };
+            }
+        }
+        catch (Exception e)
+        {
+            // Do nothing, return null
+        }
+
+        return null;
+    }
+
+    private static void HandleNextPosition(Cells trailHead, ArrayValue arrayValue, Cells? nextTrailHead,
+        List<Cells> encounteredNines)
+    {
+        if (trailHead.Value == "9")
+        {
+            AddNewTrail(encounteredNines, trailHead);
+        }
+
+        if (nextTrailHead != null && nextTrailHead.Value != null)
+        {
+            try
+            {
+                if (trailHead.Value != null && int.Parse(nextTrailHead.Value) == int.Parse(trailHead.Value) + 1)
+                {
+                    encounteredNines.AddRange(CalculateScore(nextTrailHead, arrayValue, new()));
+                }
+            }
+            catch (Exception e)
+            {
+                // Not a number
+            }
+        }
+    }
+
+    private static void AddNewTrail(List<Cells> encounteredNines, Cells newTrailHead)
+    {
+        encounteredNines.Add(newTrailHead);
+    }
+
+    private static List<Cells> RetrieveExpectedValuePositions(ArrayValue arrayValue, string pattern = "0")
+    {
+        List<Cells> cellsList = new();
+        for (int i = 0; i < arrayValue.Columns.Count; i++)
+        {
+            var column = arrayValue.Columns[i];
+            for (int j = 0; j < column.ValuesString.Count; j++)
+            {
+                var cellValue = column.ValuesString[j];
+                if (cellValue == pattern)
+                {
+                    cellsList.Add(new()
+                    {
+                        Column = i,
+                        Row = j,
+                        Value = cellValue
+                    });
+                }
+            }
+        }
+
+        return cellsList;
+    }
+
     private static void Day9_P2()
     {
         string readLine = ReadFile.ReadFileInput("inputs/day9.txt");
         List<ChainLink> diskMap = BuildDiskMap(readLine);
-        string diskMapRearrangedString = RearrangeDiskMapP2(diskMap);
-        Console.WriteLine($"Diskmap rearranged {diskMapRearrangedString}!");
+        string diskMapRearrangedString = RearrangeDiskMapIterative(diskMap);
+        Console.WriteLine("Diskmap rearranged!");
         long calculatedResult = CalculateResult(diskMapRearrangedString);
-        
-        Console.WriteLine($"9_P1 => {calculatedResult}");
+
+        Console.WriteLine($"9_P2 => {calculatedResult}");
     }
-    
-    private static string RearrangeDiskMapP2(List<ChainLink> diskMapChainLinks)
+
+    private static int GetLastIndexOfDigits(List<ChainLink> diskMap)
     {
-        long index = 0;
-        int? max = null;
-        List<string> diskMap = string.Join("", diskMapChainLinks).Split("/").ToList();
-        while (true)
+        for (int i = diskMap.Count - 1; i >= 0; i--)
         {
-            Console.WriteLine($"Index : {index}");
-            
-            int positionOfFirstPoint = diskMap.IndexOf(".");
-            if (max != null) diskMap = diskMap.GetRange(0, max.Value);
-            string lastNumberChar = diskMap.Last(s => s != "." && !string.IsNullOrWhiteSpace(s));
-            int positionOfLastNumber = diskMap.LastIndexOf(lastNumberChar);
-
-            if (positionOfFirstPoint > positionOfLastNumber) return string.Join("/",diskMap);
-
-            int numberOfPointsAfter = GetNumberOfPointsAfter(diskMap, positionOfFirstPoint);
-            if (numberOfPointsAfter >= int.Parse(lastNumberChar))
-            {
-                diskMap[positionOfFirstPoint] = lastNumberChar;
-                diskMap[positionOfLastNumber] = ".";
-            }
-            else
-            {
-                max = positionOfLastNumber;
-            }
-
-            index++;
+            var chain = diskMap[i];
+            if (chain.Pattern != ".") return i;
         }
+
+        return -1;
     }
 
-    private static int GetNumberOfPointsAfter(List<string> diskMap, int positionOfFirstPoint)
+    // private static string RearrangeDiskMapP2(List<ChainLink> diskMapChainLinks, int startReverseIndex)
+    // {
+    //     if (startReverseIndex == -1) return string.Join("", diskMapChainLinks);
+    //     var chain = diskMapChainLinks[startReverseIndex];
+    //
+    //     var indexOfFirstSpaceAvailable = GetIndexOfFirstSpaceAvailable(chain.Occurrency, diskMapChainLinks);
+    //
+    //     if (indexOfFirstSpaceAvailable != null && indexOfFirstSpaceAvailable < startReverseIndex && chain.Pattern != ".")
+    //     {
+    //         var spaceFound = diskMapChainLinks[indexOfFirstSpaceAvailable.Value];
+    //         if (spaceFound.Occurrency == chain.Occurrency)
+    //         {
+    //             spaceFound.Pattern = chain.Pattern;
+    //             chain.Pattern = ".";
+    //         }
+    //         else
+    //         {
+    //             // Need to split the space found into two
+    //             spaceFound.Pattern = chain.Pattern;
+    //             var occurrencyOffset = spaceFound.Occurrency - chain.Occurrency;
+    //             spaceFound.Occurrency = chain.Occurrency;
+    //             diskMapChainLinks.Insert(indexOfFirstSpaceAvailable.Value + 1, new()
+    //             {
+    //                 Occurrency = occurrencyOffset,
+    //                 Pattern = "."
+    //             });
+    //             chain.Pattern = ".";
+    //         }
+    //     }
+    //     
+    //
+    //     return RearrangeDiskMapP2(diskMapChainLinks, startReverseIndex - 1);
+    // }
+
+    private static string RearrangeDiskMapIterative(List<ChainLink> diskMapChainLinks)
     {
-        int res = 0;
-        string currentChar;
-        do
+        int startReverseIndex = GetLastIndexOfDigits(diskMapChainLinks);
+
+        while (startReverseIndex >= 0)
         {
-            currentChar = diskMap[positionOfFirstPoint];
-            if (currentChar == ".") res++;
-            positionOfFirstPoint++;
-        } while (currentChar == ".");
-        
-        return res;
+            var chain = diskMapChainLinks[startReverseIndex];
+
+            var indexOfFirstSpaceAvailable = GetIndexOfFirstSpaceAvailable(chain.Occurrency, diskMapChainLinks);
+
+            if (indexOfFirstSpaceAvailable != null &&
+                indexOfFirstSpaceAvailable < startReverseIndex &&
+                chain.Pattern != ".")
+            {
+                var spaceFound = diskMapChainLinks[indexOfFirstSpaceAvailable.Value];
+
+                if (spaceFound.Occurrency == chain.Occurrency)
+                {
+                    spaceFound.Pattern = chain.Pattern;
+                    chain.Pattern = ".";
+                }
+                else
+                {
+                    // Need to split the space found into two
+                    spaceFound.Pattern = chain.Pattern;
+                    var occurrencyOffset = spaceFound.Occurrency - chain.Occurrency;
+                    spaceFound.Occurrency = chain.Occurrency;
+                    diskMapChainLinks.Insert(indexOfFirstSpaceAvailable.Value + 1, new()
+                    {
+                        Occurrency = occurrencyOffset,
+                        Pattern = "."
+                    });
+                    chain.Pattern = ".";
+                }
+            }
+
+            startReverseIndex--;
+        }
+
+        return string.Join("", diskMapChainLinks);
+    }
+
+    private static int? GetIndexOfFirstSpaceAvailable(int chainOccurrency, List<ChainLink> diskMapChainLinks)
+    {
+        for (var index = 0; index < diskMapChainLinks.Count; index++)
+        {
+            var chainLink = diskMapChainLinks[index];
+            if (chainLink.Pattern == "." && chainLink.Occurrency >= chainOccurrency)
+            {
+                return index;
+            }
+        }
+
+        return null;
     }
 
     private static void Day9_P1()
     {
         string readLine = ReadFile.ReadFileInput("inputs/day9.txt");
         List<ChainLink> diskMap = BuildDiskMap(readLine);
+        Console.WriteLine($"BuildDiskMap {string.Join(",", diskMap)}!");
         string diskMapRearrangedString = RearrangeDiskMap(diskMap);
         Console.WriteLine($"Diskmap rearranged !");
         long calculatedResult = CalculateResult(diskMapRearrangedString);
-        
+
         Console.WriteLine($"9_P1 => {calculatedResult}");
     }
 
@@ -89,7 +359,13 @@ public abstract class Program
         string[] splittedDiskMapRearranged = diskMapRearranged.Split("/");
         foreach (var s in splittedDiskMapRearranged)
         {
-            if (string.IsNullOrWhiteSpace(s) || s == ".") continue;
+            if (string.IsNullOrWhiteSpace(s.Replace(".", "")))
+            {
+                index++;
+                continue;
+            }
+
+            ;
             int parsedChar = int.Parse(s);
             result += index * parsedChar;
             index++;
@@ -105,12 +381,12 @@ public abstract class Program
         while (true)
         {
             Console.WriteLine($"Index : {index}");
-            
+
             int positionOfFirstPoint = diskMap.IndexOf(".");
             string lastNumberChar = diskMap.Last(s => s != "." && !string.IsNullOrWhiteSpace(s));
             int positionOfLastNumber = diskMap.LastIndexOf(lastNumberChar);
 
-            if (positionOfFirstPoint > positionOfLastNumber) return string.Join("/",diskMap);
+            if (positionOfFirstPoint > positionOfLastNumber) return string.Join("/", diskMap);
 
             diskMap[positionOfFirstPoint] = lastNumberChar;
             diskMap[positionOfLastNumber] = ".";
@@ -118,7 +394,7 @@ public abstract class Program
             index++;
         }
     }
-    
+
     // private static string RearrangeDiskMap(string diskMap)
     // {
     //     int positionOfFirstPoint = diskMap.IndexOf(".", StringComparison.InvariantCulture);
@@ -153,7 +429,7 @@ public abstract class Program
             if (isFreeSpace) id++;
             isFreeSpace = !isFreeSpace;
         }
-        
+
         return diskMap;
     }
 
@@ -163,7 +439,7 @@ public abstract class Program
         ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day8.txt", false);
         int count = CountNotPointValues(arrayValue);
         List<Cells> positionsVisited = BuildAntennas(arrayValue);
-        
+
         Console.WriteLine($"{string.Join(",", positionsVisited)}");
         Console.WriteLine($"8_P2 => {positionsVisited.Count + count}");
     }
@@ -178,7 +454,7 @@ public abstract class Program
             for (int j = 0; j < column.ValuesString.Count; j++)
             {
                 var cellValue = column.ValuesString[j];
-                if(cellValue == ".")continue;
+                if (cellValue == ".") continue;
                 count++;
             }
         }
@@ -190,7 +466,7 @@ public abstract class Program
     {
         ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day8.txt", false);
         List<Cells> positionsVisited = BuildAntennas(arrayValue);
-        
+
         Console.WriteLine($"{string.Join(",", positionsVisited)}");
         Console.WriteLine($"8_P1 => {positionsVisited.Count}");
     }
@@ -216,7 +492,7 @@ public abstract class Program
         List<Cells> positionsVisited)
     {
         List<Cells> cellsDifferentThanCurrent = GetCellsDifferentPositionSamePattern(j, i, arrayValue, cellValue);
-        Console.WriteLine($"Pour la cellule {cellValue}({j},{i}), => {string.Join(",",cellsDifferentThanCurrent)}");
+        Console.WriteLine($"Pour la cellule {cellValue}({j},{i}), => {string.Join(",", cellsDifferentThanCurrent)}");
 
         foreach (var cell in cellsDifferentThanCurrent)
         {
@@ -224,7 +500,8 @@ public abstract class Program
         }
     }
 
-    private static void PerformCreationVisitCell(ArrayValue arrayValue, int i, int j, List<Cells> positionsVisited, Cells cell)
+    private static void PerformCreationVisitCell(ArrayValue arrayValue, int i, int j, List<Cells> positionsVisited,
+        Cells cell)
     {
         // Le plus en bas :
         Cells bottomCell = new();
@@ -248,18 +525,18 @@ public abstract class Program
 
         int colOffset = Math.Abs(bottomCell.Column - topCell.Column);
         int rowOffset = Math.Abs(bottomCell.Row - topCell.Row);
-            
+
         // Bas à gauche du haut
         if (bottomCell.Column < topCell.Column)
         {
             int newColBottom = bottomCell.Column - colOffset;
             int newRowBottom = bottomCell.Row + rowOffset;
             AddNewCell(arrayValue, positionsVisited, newColBottom, newRowBottom, bottomCell);
-                
+
             int newColTop = topCell.Column + colOffset;
             int newRowTop = topCell.Row - rowOffset;
             AddNewCell(arrayValue, positionsVisited, newColTop, newRowTop, topCell);
-                
+
             Console.WriteLine($"\t[0] Pour {cell}, ajout de : ({newRowBottom},{newColBottom}) et " +
                               $"({newRowTop},{newColTop}).");
         }
@@ -268,17 +545,18 @@ public abstract class Program
             int newColBottom = bottomCell.Column + colOffset;
             int newRowBottom = bottomCell.Row + rowOffset;
             AddNewCell(arrayValue, positionsVisited, newColBottom, newRowBottom, bottomCell);
-                
+
             int newColTop = topCell.Column - colOffset;
             int newRowTop = topCell.Row - rowOffset;
             AddNewCell(arrayValue, positionsVisited, newColTop, newRowTop, topCell);
-                
+
             Console.WriteLine($"\t[1] Pour {cell}, ajout de : ({newRowBottom},{newColBottom}) et " +
                               $"({newRowTop},{newColTop}).");
         }
     }
 
-    private static void AddNewCell(ArrayValue arrayValue, List<Cells> positionsVisited, int col, int row, Cells initCell)
+    private static void AddNewCell(ArrayValue arrayValue, List<Cells> positionsVisited, int col, int row,
+        Cells initCell)
     {
         bool added = false;
         if (col < arrayValue.Columns.Count && row < arrayValue.Columns[0].ValuesString.Count && col >= 0 && row >= 0)
@@ -294,7 +572,8 @@ public abstract class Program
                 positionsVisited.Add(newCell);
             }
         }
-        if(added)PerformCreationVisitCell(arrayValue, col, row, positionsVisited, initCell);
+
+        if (added) PerformCreationVisitCell(arrayValue, col, row, positionsVisited, initCell);
     }
 
     private static List<Cells> GetCellsDifferentPositionSamePattern(int row, int col, ArrayValue arrayValue,
