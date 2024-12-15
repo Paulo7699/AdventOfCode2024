@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Numerics;
 using System.Text.RegularExpressions;
 using AdventOfCode.models;
 using AdventOfCode.utils;
@@ -10,7 +11,552 @@ public abstract class Program
 {
     public static void Main()
     {
-        Day10_P2();
+        Day14_P2();
+    }
+
+    private static void Day14_P2()
+    {
+        List<Robot> robots = Populate.PopulateRobots("inputs/day14.txt");
+
+        (int wide, int tall)dimensions = (101, 103);
+        
+        long iterations = 0;
+        while (!AllUnique(robots))
+        {
+            foreach (var robot in robots)
+            {
+                UpdatePosition(dimensions, robot, 1, onlyOnce:true);
+            }
+            Console.WriteLine($"Iterations : {iterations}");
+            iterations++;
+        }
+        Console.WriteLine($"14_P2 => {iterations}");
+    }
+
+    private static bool AllUnique(List<Robot> robots)
+    {
+        foreach (var robot in robots)
+        {
+            if (robots.Count(r => r.SpaceFromLeft == robot.SpaceFromLeft && r.SpaceFromTop == robot.SpaceFromTop) >
+                1) return false;
+        }
+
+        return true;
+    }
+
+    private static void Day14_P1()
+    {
+        List<Robot> robots = Populate.PopulateRobots("inputs/day14.txt");
+
+        (int wide, int tall)dimensions = (101, 103);
+        foreach (var robot in robots)
+        {
+            UpdatePosition(dimensions, robot, 1);
+        }
+
+        int populationQuadrant = CalculatePopulationQuadrants(robots, dimensions);
+        Console.WriteLine($"14_P1 => {populationQuadrant}");
+    }
+
+    private static int CalculatePopulationQuadrants(List<Robot> robots, (int wide, int tall) dimensions)
+    {
+        int middleRangeWide = (int)Math.Floor((double)dimensions.wide / 2) - 1;
+        int middleRangeTall = (int)Math.Floor((double)dimensions.tall / 2) - 1;
+        
+        int q1 = CalculatePopulationQuadrant(robots, startWide: 0, endWide: middleRangeWide, startTall: 0, endTall: middleRangeTall);
+        int q2 = CalculatePopulationQuadrant(robots, startWide: middleRangeWide +2, endWide: dimensions.wide - 1, startTall: 0, endTall: middleRangeTall);
+        int q3 = CalculatePopulationQuadrant(robots, startWide: 0, endWide: middleRangeWide, startTall: middleRangeTall +2, endTall: dimensions.tall - 1);
+        int q4 = CalculatePopulationQuadrant(robots, startWide: middleRangeWide +2, endWide: dimensions.wide - 1, startTall: middleRangeTall +2, endTall: dimensions.tall - 1);
+
+        return q1 * q2 * q3 * q4;
+    }
+
+    private static int CalculatePopulationQuadrant(List<Robot> robots, int startWide, int endWide, int startTall, int endTall)
+    {
+        return robots.Count(r => r.SpaceFromLeft >= startWide && r.SpaceFromLeft <= endWide
+                                                              && r.SpaceFromTop >= startTall && r.SpaceFromTop <= endTall);
+    }
+
+    private static void UpdatePosition((int wide, int tall) dimensions, Robot robot, int elapsedTime, bool onlyOnce = false)
+    {
+        if (!onlyOnce && elapsedTime > 100) return;
+
+        int tryNewLeft = robot.SpaceFromLeft + robot.SpeedHorizontal;
+        int tryNewTop = robot.SpaceFromTop + robot.SpeedVertical;
+        
+
+        if (tryNewLeft < 0)
+        {
+            robot.SpaceFromLeft = dimensions.wide + tryNewLeft;
+        } else if (tryNewLeft > dimensions.wide - 1)
+        {
+            robot.SpaceFromLeft = tryNewLeft % dimensions.wide;
+        }
+        else
+        {
+            robot.SpaceFromLeft = tryNewLeft;
+        }
+
+        if (tryNewTop < 0)
+        {
+            robot.SpaceFromTop = dimensions.tall + tryNewTop;
+        } else if (tryNewTop > dimensions.tall - 1)
+        {
+            robot.SpaceFromTop = tryNewTop % dimensions.tall;
+        }
+        else
+        {
+            robot.SpaceFromTop = tryNewTop;
+        }
+        
+        if(!onlyOnce)UpdatePosition(dimensions, robot, elapsedTime + 1);
+    }
+
+    private static void Day13_P2()
+    {
+        List<ClawMachine> clawMachines = Populate.PopulateClawMachines("inputs/day13.txt");
+        
+        long total = 0;
+        foreach (var clawMachine in clawMachines)
+        {
+            long solveComplex = SolveSystem(clawMachine, 10000000000000);
+            if (solveComplex > 0)
+            {
+                total += solveComplex;
+            }
+        }
+        
+        Console.WriteLine($"13_P2 => {total}");
+    }
+
+    private static long SolveSystem(ClawMachine clawMachine, long needToAdd)
+    {
+        var prizeX = needToAdd + (double)clawMachine.PrizeX;
+        var prizeY = needToAdd + (double)clawMachine.PrizeY;
+        var buttonAx = (double)clawMachine.ButtonXa;
+        var buttonAy = (double)clawMachine.ButtonYa;
+        var buttonBx = (double)clawMachine.ButtonXb;
+        var buttonBy = (double)clawMachine.ButtonYb;
+        
+        // Résoudre le système, enfait c'est beaucoup plus simple..
+        long b = (long)Math.Round((prizeY - (prizeX / buttonAx) * buttonAy) / (buttonBy - (buttonBx / buttonAx) * buttonAy));
+        long a = (long)Math.Round((prizeX - b * buttonBx) / buttonAx);
+
+        var actualX = a * buttonAx + b * buttonBx;
+        var actualY = a * buttonAy + b * buttonBy;
+        if (actualX == prizeX && actualY == prizeY && a >= 0 && b >= 0)
+        {
+            return a * 3 + b;
+        }
+
+        return -1;
+    }
+
+    private static void Day13_P1()
+    {
+        List<ClawMachine> clawMachines = Populate.PopulateClawMachines("inputs/day13.txt");
+        int total = 0;
+        foreach (var clawMachine in clawMachines)
+        {
+            var presses = Solve(clawMachine);
+            if(presses == null)continue;
+        
+            total += presses.Value.PressesA * 3 + presses.Value.PressesB;
+        }
+        
+        Console.WriteLine($"13_P1 => {total}");
+    }
+
+    private static Dictionary<(int, int, int, int), bool> memo = new Dictionary<(int, int, int, int), bool>();
+
+    private static (int PressesA, int PressesB)? Solve(ClawMachine clawMachine)
+    {
+        try
+        {
+            memo.Clear();
+
+            var result = FindSolution(clawMachine, 0, 0, 0, 0, clawMachine.PrizeX, clawMachine.PrizeY);
+
+            return result != null
+                ? (result.PressesA, result.PressesB)
+                : throw new Exception("Aucune solution trouvée");
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private static State? FindSolution(
+        ClawMachine clawMachine, 
+        int currentX, 
+        int currentY, 
+        int pressesA, 
+        int pressesB, 
+        long targetX, 
+        long targetY)
+    {
+        if (pressesA > 100 || pressesB > 100)
+            return null;
+
+        if (currentX == targetX && currentY == targetY)
+            return new State 
+            { 
+                X = currentX, 
+                Y = currentY, 
+                PressesA = pressesA, 
+                PressesB = pressesB 
+            };
+
+        var memoKey = (currentX, currentY, pressesA, pressesB);
+        if (memo.ContainsKey(memoKey))
+            return null;
+
+        memo[memoKey] = true;
+
+        var resultA = FindSolution(
+            clawMachine, 
+            currentX + clawMachine.ButtonXa, 
+            currentY + clawMachine.ButtonYa, 
+            pressesA + 1, 
+            pressesB, 
+            targetX, 
+            targetY
+        );
+
+        if (resultA != null)
+            return resultA;
+
+        var resultB = FindSolution(
+            clawMachine, 
+            currentX + clawMachine.ButtonXb, 
+            currentY + clawMachine.ButtonYb, 
+            pressesA, 
+            pressesB + 1, 
+            targetX, 
+            targetY
+        );
+
+        return resultB;
+    }
+
+    private static void Day12_P2()
+    {
+        ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day12.txt", false);
+
+        List<Regions> regionsList = PopulateRegions(arrayValue);
+
+        int calculatedResult = CalculateAreaTimesNumberOfSides(regionsList, arrayValue);
+        Console.WriteLine($"12_P2 => {calculatedResult}");
+    }
+
+    private static int CalculateAreaTimesNumberOfSides(List<Regions> regionsList, ArrayValue arrayValue)
+    {
+        int total = 0;
+        foreach (Regions region in regionsList)
+        {
+            int area = region.Cells.Count;
+            int nbSides = CalculateNumberOfSides(region, arrayValue);
+
+            total += area * nbSides;
+        }
+
+        return total;
+    }
+
+    private static int CalculateNumberOfSides(Regions region, ArrayValue arrayValue)
+    {
+        MarkAllOpenSides(region, arrayValue);
+        AdjustOpenSides(region);
+        
+        int nbSides = region.Cells.Sum(c => c.MarkedSides.Count(m => m));
+        Console.WriteLine($"{region} => nbSides {nbSides}");
+        return nbSides;
+    }
+
+    private static void AdjustOpenSides(Regions region)
+    {
+        var sortedCells = region.Cells.OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
+        foreach (var cell in sortedCells)
+        {
+            Cells? rightValue = region.Cells.FirstOrDefault(c => c.Row == cell.Row && c.Column == cell.Column + 1);
+            Cells? leftValue = region.Cells.FirstOrDefault(c => c.Row == cell.Row && c.Column == cell.Column - 1);
+            Cells? topValue = region.Cells.FirstOrDefault(c => c.Row == cell.Row - 1 && c.Column == cell.Column);
+            Cells? bottomValue = region.Cells.FirstOrDefault(c => c.Row == cell.Row + 1 && c.Column == cell.Column);
+
+            if (rightValue != null && rightValue.Value == cell.Value)
+            {
+                if (rightValue.MarkedSides[1])cell.MarkedSides[1] = false;
+                if(rightValue.MarkedSides[3])cell.MarkedSides[3] = false;
+            }
+            
+            if (leftValue != null && leftValue.Value == cell.Value)
+            {
+                if(leftValue.MarkedSides[1])cell.MarkedSides[1] = false;
+                if(leftValue.MarkedSides[3])cell.MarkedSides[3] = false;
+            }
+            
+            if (topValue != null && topValue.Value == cell.Value)
+            {
+                if(topValue.MarkedSides[0])cell.MarkedSides[0] = false;
+                if(topValue.MarkedSides[2])cell.MarkedSides[2] = false;
+            }
+            
+            if (bottomValue != null && bottomValue.Value == cell.Value)
+            {
+                if(bottomValue.MarkedSides[0])cell.MarkedSides[0] = false;
+                if(bottomValue.MarkedSides[2])cell.MarkedSides[2] = false;
+            }
+        }
+    }
+
+    private static void MarkAllOpenSides(Regions region, ArrayValue arrayValue)
+    {
+        foreach (var cell in region.Cells)
+        {
+            Cells? rightValue = GetNextCell(cell.Row, cell.Column + 1, arrayValue);
+            Cells? leftValue = GetNextCell(cell.Row, cell.Column - 1, arrayValue);
+            Cells? topValue = GetNextCell(cell.Row - 1, cell.Column, arrayValue);
+            Cells? bottomValue = GetNextCell(cell.Row + 1, cell.Column, arrayValue);
+
+            cell.MarkedSides[0] = leftValue == null || leftValue.Value != cell.Value;
+            cell.MarkedSides[1] = topValue == null || topValue.Value != cell.Value;
+            cell.MarkedSides[2] = rightValue == null || rightValue.Value != cell.Value;
+            cell.MarkedSides[3] = bottomValue == null || bottomValue.Value != cell.Value;
+        }
+    }
+
+    private static void Day12_P1()
+    {
+        ArrayValue arrayValue = Populate.PopulateArrayValue("inputs/day12.txt", false);
+
+        List<Regions> regionsList = PopulateRegions(arrayValue);
+        int calculatedResult = CalculateAreaTimesPerimeter(regionsList);
+        Console.WriteLine($"12_P1 => {calculatedResult}");
+    }
+
+    private static int CalculateAreaTimesPerimeter(List<Regions> regionsList)
+    {
+        int total = 0;
+        foreach (Regions region in regionsList)
+        {
+            int area = region.Cells.Count;
+            int perimeter = CalculatePerimeter(region);
+
+            total += area * perimeter;
+        }
+
+        return total;
+    }
+
+    private static int CalculatePerimeter(Regions region)
+    {
+        int total = 0;
+        int nbSides = 4;
+        foreach (var cell in region.Cells)
+        {
+            int neighborRightCount = region.Cells.Count(r => r.Column == cell.Column +1 && r.Row == cell.Row);
+            int neighborLeftCount = region.Cells.Count(r => r.Column == cell.Column -1 && r.Row == cell.Row);
+            int neighborTopCount = region.Cells.Count(r => r.Column == cell.Column && r.Row == cell.Row - 1);
+            int neighborBottomCount = region.Cells.Count(r => r.Column == cell.Column && r.Row == cell.Row + 1); 
+            
+            total += nbSides - (neighborRightCount + neighborLeftCount + neighborTopCount + neighborBottomCount);
+        }
+
+        return total;
+    }
+
+    private static List<Regions> PopulateRegions(ArrayValue arrayValue)
+    {
+        List<Regions> regionsList = new();
+        for (int i = 0; i < arrayValue.Columns.Count; i++)
+        {
+            var column = arrayValue.Columns[i];
+            for (int j = 0; j < column.ValuesString.Count; j++)
+            {
+                if(IsInRegionList(regionsList, j, i))continue;
+                
+                Regions region = new();
+                Cells currentCell = new()
+                {
+                    Row = j,
+                    Column = i,
+                    Value = column.ValuesString[j]
+                };
+                region.Cells.Add(currentCell);
+                AddNeighbors(arrayValue, region, currentCell);
+                
+                regionsList.Add(region);
+            }
+        }
+
+        return regionsList;
+    }
+
+    private static void AddNeighbors(ArrayValue arrayValue, Regions region, Cells cell)
+    {
+        Cells? rightValue = GetNextCell(cell.Row, cell.Column + 1, arrayValue);
+        Cells? leftValue = GetNextCell(cell.Row, cell.Column - 1, arrayValue);
+        Cells? topValue = GetNextCell(cell.Row - 1, cell.Column, arrayValue);
+        Cells? bottomValue = GetNextCell(cell.Row + 1, cell.Column, arrayValue);
+        
+        HandleNextValue(arrayValue, region, rightValue, cell);
+        HandleNextValue(arrayValue, region, leftValue, cell);
+        HandleNextValue(arrayValue, region, topValue, cell);
+        HandleNextValue(arrayValue, region, bottomValue, cell);
+    }
+
+    private static void HandleNextValue(ArrayValue arrayValue, Regions region, Cells? nextValue, Cells currentCell)
+    {
+        if (nextValue != null && nextValue.Value == currentCell.Value)
+        {
+            if (!IsInRegion(region, nextValue.Row, nextValue.Column))
+            {
+                region.Cells.Add(nextValue);
+                AddNeighbors(arrayValue, region, nextValue);
+            }
+        }
+    }
+
+    private static bool IsInRegion(Regions region, int row, int col)
+    {
+        return region.Cells.Any(c => c.Row == row && c.Column == col);
+    }
+    
+    private static bool IsInRegionList(List<Regions> regionsList, int row, int col)
+    {
+        return regionsList.Any(r => r.Cells.Any(c => c.Row == row && c.Column == col));
+    }
+
+    private static void Day11_P2()
+    {
+        
+        string content = ReadFile.ReadFileInput("inputs/day11.txt");
+        var numbers = content.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        Dictionary<string, long> currentState = new();
+        
+        // On compte les occurences, pas besoin de les stocker plusieurs fois
+        numbers.GroupBy(x => x).ToList().ForEach(x => currentState.Add(x.Key, x.Count()));
+        
+        for (int i = 0; i < 75; i++)
+        {
+            var newState = new Dictionary<string, long>();
+            foreach (var (number, count) in currentState)
+            {
+                ApplyRulesAndUpdateUnique(number, count, newState);
+            }
+
+            currentState = newState;
+        }
+        
+        Console.WriteLine($"Stones : {currentState.Sum(n => n.Value)}");
+    }
+    
+    private static void ApplyRulesAndUpdateUnique(string number, long count, Dictionary<string, long> next)
+    {
+        void AddOrUpdate(string key, long value)
+        {
+            if (next.ContainsKey(key))
+            {
+                next[key] += value;
+            }
+            else
+            {
+                next.Add(key, value);
+            }
+        }
+
+        if (number == "0")
+        {
+            AddOrUpdate("1", count);
+        }
+        else if (number.Length % 2 == 0)
+        {
+            var half = number.Length / 2;
+            var left = number.Substring(0, half);
+            var right = number.Substring(half).TrimStart('0');
+            if (right == "")
+            {
+                right = "0";
+            }
+
+            AddOrUpdate(left, count);
+            AddOrUpdate(right, count);
+        }
+        else
+        {
+            var bigNumber = BigInteger.Parse(number);
+            var multiple = bigNumber * 2024;
+            AddOrUpdate(multiple.ToString(), count);
+        }
+    }
+    
+    private static void Day11_P1()
+    {
+        
+        string content = ReadFile.ReadFileInput("inputs/day11.txt");
+        List<string> stones = content.Split(" ").ToList();
+        int numberOfBlinks = 25;
+        for (int i = 0; i < numberOfBlinks; i++)
+        {
+            Blink182(stones);
+            Console.WriteLine($"After {i+1} blink:\n\t{string.Join(" ", stones)}");
+        }
+        
+        Console.WriteLine($"Stones : {stones.Count}");
+    }
+
+    private static void Blink182(List<string> stones)
+    {
+        for (int i = 0; i < stones.Count; i++)
+        {
+            // Rule 1 :
+            if (stones[i] == "0")
+            {
+                stones[i] = "1";
+            } else if (stones[i].Length % 2 == 0) // Rule 2
+            {
+                (string part1, string part2) = DivideStoneIntoTwo(stones[i]);
+                stones[i] = part1;
+                stones.Insert(i+1, part2);
+                i++;
+            }
+            else
+            {
+                stones[i] = (int.Parse(stones[i]) * 2024).ToString();
+            }
+        }
+    }
+
+    private static (string part1, string part2) DivideStoneIntoTwo(string stone)
+    {
+        int middleIndex = stone.Length / 2;
+        string part1 = string.Empty;
+        string part2 = string.Empty;
+
+        for (int i = 0; i < middleIndex; i++)
+        {
+            part1 += stone[i];
+        }
+        
+        for (int i = middleIndex; i < stone.Length; i++)
+        {
+            part2 += stone[i];
+        }
+
+        return (RemovedUselessZeros(part1), RemovedUselessZeros(part2));
+    }
+
+    private static string RemovedUselessZeros(string partWithZeros)
+    {
+        if (!partWithZeros.StartsWith("0")) return partWithZeros;
+        if (partWithZeros.All(p => p == '0')) return "0";
+
+        char firstNot0 = partWithZeros.FirstOrDefault(p => p != '0');
+        int indexOfFirstNot0 = partWithZeros.IndexOf(firstNot0);
+
+        return partWithZeros.Substring(indexOfFirstNot0);
     }
 
     private static void Day10_P2()

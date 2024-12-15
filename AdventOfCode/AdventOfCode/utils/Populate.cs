@@ -4,6 +4,69 @@ namespace AdventOfCode.utils;
 
 public class Populate
 {
+    public static List<Robot> PopulateRobots(string filePath)
+    {
+        List<Robot> robots = new();
+        string content = ReadFile.ReadFileInput(filePath);
+        string[] contentSplitted = content.Split("\r\n");
+
+        foreach (var robotLines in contentSplitted)
+        {
+            string[] splittedSpaces = robotLines.Split(" ");
+            
+            string[] positions = splittedSpaces[0].Replace("p=","").Split(",");
+            string[] speeds = splittedSpaces[1].Replace("v=","").Split(",");
+            
+            robots.Add(new()
+            {
+                SpaceFromLeft = int.Parse(positions[0]),
+                SpaceFromTop = int.Parse(positions[1]),
+                SpeedHorizontal = int.Parse(speeds[0]),
+                SpeedVertical = int.Parse(speeds[1]),
+            });
+        }
+
+        return robots;
+    }
+
+    public static List<ClawMachine> PopulateClawMachines(string filePath)
+    {
+        List<ClawMachine> clawMachines = new();
+        string content = ReadFile.ReadFileInput(filePath);
+        string[] contentSplitted = content.Split("\r\n\r\n");
+
+        foreach (var clawMachineStringGroup in contentSplitted)
+        {
+            string[] clawMachineLines = clawMachineStringGroup.Split("\r\n");
+
+            string lineButtonA = clawMachineLines[0].Split(":")[1];
+            string buttonXa = lineButtonA.Split(",")[0];
+            string buttonYa = lineButtonA.Split(",")[1];
+            
+            string lineButtonB = clawMachineLines[1].Split(":")[1];
+            string buttonXb = lineButtonB.Split(",")[0];
+            string buttonYb = lineButtonB.Split(",")[1];
+            
+            string linePrize = clawMachineLines[2].Split(":")[1];
+            string prizeX = linePrize.Split(",")[0];
+            string prizeY = linePrize.Split(",")[1];
+
+            ClawMachine clawMachine = new()
+            {
+                ButtonXa = int.Parse(buttonXa.Replace("X+", "")),
+                ButtonYa = int.Parse(buttonYa.Replace("Y+", "")),
+                ButtonXb = int.Parse(buttonXb.Replace("X+", "")),
+                ButtonYb = int.Parse(buttonYb.Replace("Y+", "")),
+                PrizeX = int.Parse(prizeX.Replace("X=", "")),
+                PrizeY = int.Parse(prizeY.Replace("Y=", "")),
+            };
+            clawMachines.Add(clawMachine);
+        }
+
+        return clawMachines;
+    }
+    
+
     public static ArrayValue PopulateArrayValue(string filePath, bool shouldSplit = true)
     {
         string content = ReadFile.ReadFileInput(filePath);
