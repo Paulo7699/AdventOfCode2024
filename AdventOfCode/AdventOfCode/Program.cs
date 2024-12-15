@@ -18,6 +18,154 @@ public abstract class Program
     {
         (ArrayValue arrayValue, string instructions) = Populate.PopulateLanternfish("inputs/day15.txt");
         Console.WriteLine($"Instructions : {instructions}");
+        Console.WriteLine($"Array value :\n{arrayValue}");
+        // foreach (var instruction in instructions)
+        // {
+            PlayInstruction(arrayValue, '>');
+            // Console.WriteLine($"Array value :\n{arrayValue}");
+        // }
+    }
+
+    private static void PlayInstruction(ArrayValue arrayValue, char instruction)
+    {
+        Cells? robotPosition = RetrieveRobotPosition(arrayValue);
+        if (robotPosition == null) return;
+        
+        Console.WriteLine($"Robot position : {robotPosition}");
+
+        (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
+        if(nextVal == null || nextVal == "#") return;
+
+        if (nextVal == ".")
+        {
+            arrayValue.Columns[nextCol].ValuesString[nextRow] = "@";
+            arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row] = ".";
+            // return;
+        }
+        
+        // nextVal == "0" => Petit train
+        int distanceFromNextWall = GetDistanceFromNextWall(arrayValue, instruction, nextVal, nextRow, nextCol);
+        int numberOfNextO = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, "O");
+        int availableSpace = GetAvailableSpaceFromLastO(arrayValue, instruction, robotPosition, numberOfNextO);
+        
+        // Console.WriteLine($"distanceFromNextWall : {distanceFromNextWall}");
+        // Console.WriteLine($"numberOfNext0 : {numberOfNextO}");
+        // Console.WriteLine($"available space : {availableSpace}");
+        
+    }
+
+    private static int GetAvailableSpaceFromLastO(ArrayValue arrayValue, char instruction, Cells robotPosition, int numberOfNextO)
+    {
+        int newRow = robotPosition.Row;
+        int newCol = robotPosition.Column;
+        switch (instruction)
+        {
+            case 'v':
+                newRow += numberOfNextO;
+                break;
+            case '>':
+                newCol += numberOfNextO;
+                break;
+            case '^':
+                newRow -= numberOfNextO;
+                break;
+            case '<':
+                newCol -= numberOfNextO;
+                break;
+        }
+        
+        Console.WriteLine($"New cell : {newRow} {newCol}");
+
+        return GetNumberOfExpectedCharFromHere(arrayValue, instruction, new()
+        {
+            Column = newCol,
+            Row = newRow,
+            Value = robotPosition.Value
+        }, ".");
+    }
+
+    private static int GetNumberOfExpectedCharFromHere(ArrayValue arrayValue, char instruction, Cells robotPosition, string expectedChar)
+    {
+        int numberOfExpectedChar = 0;
+
+        (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
+        if (nextVal == expectedChar)
+        {
+            numberOfExpectedChar++;
+            numberOfExpectedChar += GetNumberOfExpectedCharFromHere(arrayValue, instruction, new()
+            {
+                Row = nextRow,
+                Column = nextCol,
+                Value = nextVal
+            }, expectedChar);
+        }
+        
+        return numberOfExpectedChar;
+    }
+
+    private static int GetDistanceFromNextWall(ArrayValue arrayValue, char instruction, string? nextVal, int nextRow, int nextCol)
+    {
+        int total = 0;
+
+        if (nextVal == "#" || nextVal == null) return total;
+        total++;
+
+        (int nextRowAgain, int nextColAgain, string? nextValAgain) = GetNextCell(instruction, arrayValue, new()
+        {
+            Row = nextRow,
+            Column = nextCol,
+            Value = nextVal
+        });
+
+        total += GetDistanceFromNextWall(arrayValue, instruction, nextValAgain, nextRowAgain, nextColAgain);
+        return total;
+    }
+
+    private static (int nextRow, int nextCol, string? nextVal) GetNextCell(char instruction, ArrayValue arrayValue, Cells robotPosition)
+    {
+        try
+        {
+            switch (instruction)
+            {
+                case 'v':
+                    return (robotPosition.Row + 1, robotPosition.Column, arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row + 1]);
+                case '>':
+                    return (robotPosition.Row, robotPosition.Column + 1, arrayValue.Columns[robotPosition.Column + 1].ValuesString[robotPosition.Row]);
+                case '^':
+                    return (robotPosition.Row - 1, robotPosition.Column, arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row - 1]);
+                case '<':
+                    return (robotPosition.Row, robotPosition.Column - 1, arrayValue.Columns[robotPosition.Column - 1].ValuesString[robotPosition.Row]);
+                default:
+                    return (0, 0, null);
+            }
+        }
+        catch (Exception e)
+        {
+            return (0, 0, null);
+        }
+    }
+
+    private static Cells? RetrieveRobotPosition(ArrayValue arrayValue)
+    {
+        for (var col = 0; col < arrayValue.Columns.Count; col++)
+        {
+            var column = arrayValue.Columns[col];
+            for (var row = 0; row < column.ValuesString.Count; row++)
+            {
+                var cell = column.ValuesString[row];
+                if (cell == "@")
+                {
+                    return new()
+                    {
+                        Row = row,
+                        Column = col,
+                        Value = cell
+                    };
+                }
+            }
+        }
+
+        return null;
     }
 
     private static void Day14_P2()
