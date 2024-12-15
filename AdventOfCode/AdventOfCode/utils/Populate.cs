@@ -66,7 +66,41 @@ public class Populate
         return clawMachines;
     }
     
+    public static (ArrayValue arrayValue, string instructions) PopulateLanternfish(string filePath)
+    {
+        string content = ReadFile.ReadFileInput(filePath);
+        string[] contentSplitted = content.Split("\r\n\r\n");
+        contentSplitted = RemoveEmptyValuesFromArray(contentSplitted);
+        
+        ArrayValue arrayValue = new();
+        
+        // Populate map
+        var mapGroup = contentSplitted[0].Split("\r\n");
+        for (var rowMap = 0; rowMap < mapGroup.Length; rowMap++)
+        {
+            var mapLine = mapGroup[rowMap].ToCharArray().Select(c => c.ToString()).ToArray();
+            for (int col = 0; col < mapLine.Length; col++)
+            {
+                Column? column = arrayValue.Columns.FirstOrDefault(c => c.Index == col);
+                if (column == null)
+                {
+                    column = new()
+                    {
+                        Index = col
+                    };
+                    arrayValue.Columns.Add(column);
+                }
+                
+                column.ValuesString.Add(mapLine[col]);
+            }
+        }
 
+        // Populate instructions
+        string instructions = string.Join("", contentSplitted[1].Split("\r\n"));
+        
+        return (arrayValue, instructions);
+    }
+    
     public static ArrayValue PopulateArrayValue(string filePath, bool shouldSplit = true)
     {
         string content = ReadFile.ReadFileInput(filePath);

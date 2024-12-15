@@ -11,7 +11,13 @@ public abstract class Program
 {
     public static void Main()
     {
-        Day14_P2();
+        Day15_P1();
+    }
+
+    private static void Day15_P1()
+    {
+        (ArrayValue arrayValue, string instructions) = Populate.PopulateLanternfish("inputs/day15.txt");
+        Console.WriteLine($"Instructions : {instructions}");
     }
 
     private static void Day14_P2()
