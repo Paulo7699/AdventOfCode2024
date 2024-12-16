@@ -21,68 +21,39 @@ public abstract class Program
         Console.WriteLine($"Transformed :\n{arrayValue}");
         foreach (var instruction in instructions)
         {
-            PlayInstructionV2(arrayValue, instruction);
-            // Console.Clear();
+            Console.Clear();
             Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
             // Thread.Sleep(500);
             Console.ReadLine();
         }
-    }
-    
-    private static void PlayInstructionV2(ArrayValue arrayValue, char instruction)
-    {
-        Cells? robotPosition = RetrieveRobotPosition(arrayValue);
-        if (robotPosition == null) return;
-
-        (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
-        Console.WriteLine($"Next val : {nextVal}");
-        if(nextVal == null || nextVal == "#") return;
-
-        if (nextVal == ".")
-        {
-            arrayValue.Columns[nextCol].ValuesString[nextRow] = "@";
-            arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row] = ".";
-            return;
-        }
         
-        // nextVal == "[]" => Petit train
-        List<Cells> numberOfNextObjects = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, ["[","]"]);
-        
-
-        numberOfNextObjects.Reverse();
-        numberOfNextObjects.Add(robotPosition);
-        
-        Console.WriteLine(string.Join("/", numberOfNextObjects));
-        
-        foreach (var nextO in numberOfNextObjects)
-        {
-            (int nextRowToMove, int nextColToMove, string? nextValToMove) = GetNextCell(instruction, arrayValue, nextO);
-            bool nextCellAvailable = NextCellIsAvailable(nextValToMove, nextO, instruction, arrayValue);
-            Console.WriteLine($"Current -> {nextO}, available -> {nextCellAvailable}");
-            if (nextCellAvailable)
-            {
-                UpAlsoRightOrLeft(arrayValue, nextO, instruction);
-                arrayValue.Columns[nextColToMove].ValuesString[nextRowToMove] = nextO.Value;
-                arrayValue.Columns[nextO.Column].ValuesString[nextO.Row] = ".";
-        
-                nextO.Column = nextColToMove;
-                nextO.Row = nextRowToMove;
-
-            }
-            Console.WriteLine();
-        }
-    }
-
-    private static void UpAlsoRightOrLeft(ArrayValue arrayValue, Cells currentCell, char instruction)
-    {
-        if (currentCell.Value == "@" || (instruction != '^' && instruction != 'v')) return;
-        
-        // Here, we already know that the next value space is free
-
-        (int nextRow, int nextCol, string? nextVal) neighborCell = GetNextCell(currentCell.Value == "[" ? '>':'<',arrayValue, currentCell);
-        Console.WriteLine($"I am modifying {currentCell}, so I need to update also {neighborCell}");
-        arrayValue.Columns[neighborCell.nextCol].ValuesString[instruction == 'v' ? neighborCell.nextRow + 1:neighborCell.nextRow - 1] = neighborCell.nextVal;
-        arrayValue.Columns[neighborCell.nextCol].ValuesString[neighborCell.nextRow] = ".";
+        // Gamer mode
+        // do
+        // {
+        //     char instruction;   
+        //     ConsoleKeyInfo keyInfo = Console.ReadKey(true); 
+        //
+        //     switch (keyInfo.Key)
+        //     {
+        //         case ConsoleKey.UpArrow:
+        //             instruction = '^';
+        //             break;
+        //         case ConsoleKey.DownArrow:
+        //             instruction = 'v';
+        //             break;
+        //         case ConsoleKey.LeftArrow:
+        //             instruction = '<';
+        //             break;
+        //         case ConsoleKey.RightArrow:
+        //             instruction = '>';
+        //             break;
+        //         default:
+        //             return;
+        //     }
+        //     
+        //     // Console.Clear();
+        //     Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
+        // } while (true);
     }
 
     private static bool NextCellIsAvailable(string? nextValToMove, Cells currentCell, char instruction, ArrayValue arrayValue)
