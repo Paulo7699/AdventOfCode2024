@@ -11,6 +11,6 @@ public class Cells
 
     public override string ToString()
     {
-        return $"{Value}({Row},{Column}), [{string.Join("/", MarkedSides)}]";
+        return $"{Value}({Row},{Column})";
     }
 }

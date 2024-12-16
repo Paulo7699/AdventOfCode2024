@@ -62,4 +62,16 @@ public class Column
     {
         return string.Join("", ValuesString);
     }
+
+    public Column DeepCopy()
+    {
+        List<int?> valuesCopy = Values.Select(s => s).ToList();
+        List<string?> valuesStringCopy = ValuesString.Select(s => s).ToList();
+        return new Column()
+        {
+            Index = Index,
+            Values = valuesCopy,
+            ValuesString = valuesStringCopy
+        };
+    }
 }

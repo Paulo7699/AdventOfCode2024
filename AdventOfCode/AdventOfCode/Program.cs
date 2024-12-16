@@ -11,27 +11,95 @@ public abstract class Program
 {
     public static void Main()
     {
-        Day15_P1();
+        Day15_P2();
+    }
+    
+    private static void Day15_P2()
+    {
+        (ArrayValue arrayValue, string instructions) = Populate.PopulateLanternfish("inputs/day15.txt");
+        TransformMap(arrayValue);
+        Console.WriteLine($"Transformed :\n{arrayValue}");
+        foreach (var instruction in instructions)
+        {
+            PlayInstruction(arrayValue, instruction);
+            Console.Clear();
+            Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
+            Thread.Sleep(1000);
+        }
+    }
+
+    private static void TransformMap(ArrayValue arrayValue)
+    {
+        List<Column> columnsDuplicated = new();
+        // Need to duplicate each column and change the value of the right one if the left one is "@" or "O"
+        for (var col = 0; col < arrayValue.Columns.Count; col++)
+        {
+            Column firstColumn = arrayValue.Columns[col].DeepCopy();
+            Column secondColumn = arrayValue.Columns[col].DeepCopy();
+            
+            firstColumn.ValuesString = firstColumn.ValuesString
+                .Select(vs => vs == "O" ? "[" : vs)
+                .ToList();
+            
+            secondColumn.ValuesString = secondColumn.ValuesString
+                .Select(vs =>
+                {
+                    if (vs == "O")
+                    {
+                        return "]";
+                    }
+                    if (vs == "@")
+                    {
+                        return ".";
+                    }
+
+                    return vs;
+                })
+                .ToList();
+            
+            columnsDuplicated.Add(firstColumn);
+            columnsDuplicated.Add(secondColumn);
+        }
+
+        arrayValue.Columns = columnsDuplicated;
     }
 
     private static void Day15_P1()
     {
         (ArrayValue arrayValue, string instructions) = Populate.PopulateLanternfish("inputs/day15.txt");
-        Console.WriteLine($"Instructions : {instructions}");
-        Console.WriteLine($"Array value :\n{arrayValue}");
-        // foreach (var instruction in instructions)
-        // {
-            PlayInstruction(arrayValue, '>');
-            // Console.WriteLine($"Array value :\n{arrayValue}");
-        // }
+        foreach (var instruction in instructions)
+        {
+            PlayInstruction(arrayValue, instruction);
+            Console.Clear();
+            Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
+            Thread.Sleep(1000);
+        }
+
+        int gpsScore = CalculateGpsScore(arrayValue);
+        Console.WriteLine($"15_P1 => {gpsScore}");
+    }
+
+    private static int CalculateGpsScore(ArrayValue arrayValue)
+    {
+        int gpsScore = 0;
+
+        for (var col = 0; col < arrayValue.Columns.Count; col++)
+        {
+            var column = arrayValue.Columns[col];
+            for (var row = 0; row < column.ValuesString.Count; row++)
+            {
+                string valueString = column.ValuesString[row];
+                if (valueString == "O") gpsScore += 100 * row + col;
+            }
+        }
+
+        return gpsScore;
     }
 
     private static void PlayInstruction(ArrayValue arrayValue, char instruction)
     {
         Cells? robotPosition = RetrieveRobotPosition(arrayValue);
         if (robotPosition == null) return;
-        
-        Console.WriteLine($"Robot position : {robotPosition}");
 
         (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
         if(nextVal == null || nextVal == "#") return;
@@ -40,21 +108,31 @@ public abstract class Program
         {
             arrayValue.Columns[nextCol].ValuesString[nextRow] = "@";
             arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row] = ".";
-            // return;
+            return;
         }
         
         // nextVal == "0" => Petit train
-        int distanceFromNextWall = GetDistanceFromNextWall(arrayValue, instruction, nextVal, nextRow, nextCol);
-        int numberOfNextO = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, "O");
-        int availableSpace = GetAvailableSpaceFromLastO(arrayValue, instruction, robotPosition, numberOfNextO);
+        List<Cells> numberOfNextO = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, "O");
+        List<Cells> availableSpace = GetAvailableSpaceFromLastO(arrayValue, instruction, robotPosition, numberOfNextO.Count);
         
-        // Console.WriteLine($"distanceFromNextWall : {distanceFromNextWall}");
-        // Console.WriteLine($"numberOfNext0 : {numberOfNextO}");
-        // Console.WriteLine($"available space : {availableSpace}");
-        
+
+        numberOfNextO.Reverse();
+        numberOfNextO.Add(robotPosition);
+        foreach (var nextO in numberOfNextO)
+        {
+            (int nextRowToMove, int nextColToMove, string? nextValToMove) = GetNextCell(instruction, arrayValue, nextO);
+            if (nextValToMove == ".")
+            {
+                arrayValue.Columns[nextColToMove].ValuesString[nextRowToMove] = nextO.Value;
+                arrayValue.Columns[nextO.Column].ValuesString[nextO.Row] = ".";
+
+                nextO.Column = nextColToMove;
+                nextO.Row = nextRowToMove;
+            }
+        }
     }
 
-    private static int GetAvailableSpaceFromLastO(ArrayValue arrayValue, char instruction, Cells robotPosition, int numberOfNextO)
+    private static List<Cells> GetAvailableSpaceFromLastO(ArrayValue arrayValue, char instruction, Cells robotPosition, int numberOfNextO)
     {
         int newRow = robotPosition.Row;
         int newCol = robotPosition.Column;
@@ -73,8 +151,6 @@ public abstract class Program
                 newCol -= numberOfNextO;
                 break;
         }
-        
-        Console.WriteLine($"New cell : {newRow} {newCol}");
 
         return GetNumberOfExpectedCharFromHere(arrayValue, instruction, new()
         {
@@ -84,20 +160,21 @@ public abstract class Program
         }, ".");
     }
 
-    private static int GetNumberOfExpectedCharFromHere(ArrayValue arrayValue, char instruction, Cells robotPosition, string expectedChar)
+    private static List<Cells> GetNumberOfExpectedCharFromHere(ArrayValue arrayValue, char instruction, Cells robotPosition, string expectedChar)
     {
-        int numberOfExpectedChar = 0;
+        List<Cells> numberOfExpectedChar = new();
 
         (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
         if (nextVal == expectedChar)
         {
-            numberOfExpectedChar++;
-            numberOfExpectedChar += GetNumberOfExpectedCharFromHere(arrayValue, instruction, new()
+            Cells neighbor = new()
             {
                 Row = nextRow,
                 Column = nextCol,
                 Value = nextVal
-            }, expectedChar);
+            };
+            numberOfExpectedChar.Add(neighbor);
+            numberOfExpectedChar.AddRange(GetNumberOfExpectedCharFromHere(arrayValue, instruction, neighbor, expectedChar));
         }
         
         return numberOfExpectedChar;
