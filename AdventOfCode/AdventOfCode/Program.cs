@@ -21,11 +21,83 @@ public abstract class Program
         Console.WriteLine($"Transformed :\n{arrayValue}");
         foreach (var instruction in instructions)
         {
-            PlayInstruction(arrayValue, instruction);
-            Console.Clear();
+            PlayInstructionV2(arrayValue, instruction);
+            // Console.Clear();
             Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
-            Thread.Sleep(1000);
+            // Thread.Sleep(500);
+            Console.ReadLine();
         }
+    }
+    
+    private static void PlayInstructionV2(ArrayValue arrayValue, char instruction)
+    {
+        Cells? robotPosition = RetrieveRobotPosition(arrayValue);
+        if (robotPosition == null) return;
+
+        (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
+        Console.WriteLine($"Next val : {nextVal}");
+        if(nextVal == null || nextVal == "#") return;
+
+        if (nextVal == ".")
+        {
+            arrayValue.Columns[nextCol].ValuesString[nextRow] = "@";
+            arrayValue.Columns[robotPosition.Column].ValuesString[robotPosition.Row] = ".";
+            return;
+        }
+        
+        // nextVal == "[]" => Petit train
+        List<Cells> numberOfNextObjects = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, ["[","]"]);
+        
+
+        numberOfNextObjects.Reverse();
+        numberOfNextObjects.Add(robotPosition);
+        
+        Console.WriteLine(string.Join("/", numberOfNextObjects));
+        
+        foreach (var nextO in numberOfNextObjects)
+        {
+            (int nextRowToMove, int nextColToMove, string? nextValToMove) = GetNextCell(instruction, arrayValue, nextO);
+            bool nextCellAvailable = NextCellIsAvailable(nextValToMove, nextO, instruction, arrayValue);
+            Console.WriteLine($"Current -> {nextO}, available -> {nextCellAvailable}");
+            if (nextCellAvailable)
+            {
+                UpAlsoRightOrLeft(arrayValue, nextO, instruction);
+                arrayValue.Columns[nextColToMove].ValuesString[nextRowToMove] = nextO.Value;
+                arrayValue.Columns[nextO.Column].ValuesString[nextO.Row] = ".";
+        
+                nextO.Column = nextColToMove;
+                nextO.Row = nextRowToMove;
+
+            }
+            Console.WriteLine();
+        }
+    }
+
+    private static void UpAlsoRightOrLeft(ArrayValue arrayValue, Cells currentCell, char instruction)
+    {
+        if (currentCell.Value == "@" || (instruction != '^' && instruction != 'v')) return;
+        
+        // Here, we already know that the next value space is free
+
+        (int nextRow, int nextCol, string? nextVal) neighborCell = GetNextCell(currentCell.Value == "[" ? '>':'<',arrayValue, currentCell);
+        Console.WriteLine($"I am modifying {currentCell}, so I need to update also {neighborCell}");
+        arrayValue.Columns[neighborCell.nextCol].ValuesString[instruction == 'v' ? neighborCell.nextRow + 1:neighborCell.nextRow - 1] = neighborCell.nextVal;
+        arrayValue.Columns[neighborCell.nextCol].ValuesString[neighborCell.nextRow] = ".";
+    }
+
+    private static bool NextCellIsAvailable(string? nextValToMove, Cells currentCell, char instruction, ArrayValue arrayValue)
+    {
+        if (instruction != 'v' && instruction != '^' || currentCell.Value == "@") return nextValToMove == ".";
+        
+        // Si la valeur courante est [ on doit vérifier si le voisin de la cellule de droite (]) selon l'instruction a aussi un "." en haut/bas
+        Cells rightCell = new()
+        {
+            Row = currentCell.Row,
+            Column = currentCell.Value == "[" ? currentCell.Column + 1 : currentCell.Column - 1 
+        };
+        (_, _, string? nextVal) = GetNextCell(instruction, arrayValue, rightCell);
+        
+        return nextValToMove == "." && nextVal == ".";
     }
 
     private static void TransformMap(ArrayValue arrayValue)
@@ -72,7 +144,7 @@ public abstract class Program
             PlayInstruction(arrayValue, instruction);
             Console.Clear();
             Console.WriteLine($"Instruction {instruction}:\n{arrayValue}");
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
         }
 
         int gpsScore = CalculateGpsScore(arrayValue);
@@ -112,8 +184,7 @@ public abstract class Program
         }
         
         // nextVal == "0" => Petit train
-        List<Cells> numberOfNextO = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, "O");
-        List<Cells> availableSpace = GetAvailableSpaceFromLastO(arrayValue, instruction, robotPosition, numberOfNextO.Count);
+        List<Cells> numberOfNextO = GetNumberOfExpectedCharFromHere(arrayValue, instruction, robotPosition, ["O"]);
         
 
         numberOfNextO.Reverse();
@@ -157,15 +228,15 @@ public abstract class Program
             Column = newCol,
             Row = newRow,
             Value = robotPosition.Value
-        }, ".");
+        }, ["."]);
     }
 
-    private static List<Cells> GetNumberOfExpectedCharFromHere(ArrayValue arrayValue, char instruction, Cells robotPosition, string expectedChar)
+    private static List<Cells> GetNumberOfExpectedCharFromHere(ArrayValue arrayValue, char instruction, Cells robotPosition, string[] expectedChars)
     {
         List<Cells> numberOfExpectedChar = new();
 
         (int nextRow, int nextCol, string? nextVal) = GetNextCell(instruction, arrayValue, robotPosition);
-        if (nextVal == expectedChar)
+        if (expectedChars.Contains(nextVal))
         {
             Cells neighbor = new()
             {
@@ -174,7 +245,8 @@ public abstract class Program
                 Value = nextVal
             };
             numberOfExpectedChar.Add(neighbor);
-            numberOfExpectedChar.AddRange(GetNumberOfExpectedCharFromHere(arrayValue, instruction, neighbor, expectedChar));
+            
+            numberOfExpectedChar.AddRange(GetNumberOfExpectedCharFromHere(arrayValue, instruction, neighbor, expectedChars));
         }
         
         return numberOfExpectedChar;
